@@ -8,8 +8,7 @@ May 1, 2016
 
 ## Overall Approach
 
-When I tried out some approaches on the training and testing data, I found that pretty much any approach takes times on my 2010 MacBook Pro, even with 8GB of memory. I found the following article by Len Greski's article very useful,  primarily in the making the processing parallel:
-https://github.com/lgreski/datasciencectacontent/blob/master/markdown/pml-randomForestPerformance.md 
+When I tried out some approaches on the training and testing data, I found that pretty much any approach takes times on my 2010 MacBook Pro, even with 8GB of memory. I found the article [Improving Performance of Random Forest in caret::train()](https://github.com/lgreski/datasciencectacontent/blob/master/markdown/pml-randomForestPerformance.md) by Len Greski very useful,  primarily in the making the processing parallel.
 
 From previous experience with machine learning, I have become fond of using Random Forest (rf) for prediction.  I thought I would try rf and a few other methods on the training data as supplied, to get a baseline. But it turned out that methods such as boosting failed on the training and/or testing data as supplied.
 
