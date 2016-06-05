@@ -9,82 +9,94 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## Overall Approach
+## Background
 
-When I tried out some approaches on the training and testing data, I found that pretty much any approach takes times on my 2010 MacBook Pro, even with 8GB of memory. I found the article [Improving Performance of Random Forest in caret::train()](https://github.com/lgreski/datasciencectacontent/blob/master/markdown/pml-randomForestPerformance.md) by Len Greski very useful,  primarily in the making the processing parallel.
-
-From previous experience with machine learning, I have become fond of using Random Forest (rf) for prediction.  I thought I would try rf and a few other methods on the training data as supplied, to get a baseline. But it turned out that methods such as boosting failed on the training and/or testing data as supplied.
-
-I was able to get a RF model with the training data using the following method. As recommended in the Greski article, I set up my laptop as a 3-core cluster (leaving 1 core for the OS). I set up traincontrol to do 10-fold cross validation, and set it up to use the cluster defined. I then loaded the training data into a dataframe, and trained the **classe** feature/variable against all other features/variables. It took quite a while but finally ended. I then stopped the cluster. The results from this run are presented in the next section.
+This report describes the approach used to train and test on the [Weight Lifting Exercise Dataset](http://groupware.les.inf.puc-rio.br/har), which contains data acquired from subjects correctly and incorrectly doing barbell lifts.This report is part of the final project of the Coursera course on <i>Practical Machine Language Learning</i>.
 
 
-## Results from the baseline Random Forest training
+## Overall approach
+From previous experience with machine learning, I have become fond of using Random Forest (rf) for classification.
 
-When I examined the model, I got the following:
+I initially ran rf on the training data as supplied, to get a baseline. I then refined the dataset to get rid of columns with a preponderance of NA and blank values etc, and ran a number of machine learning algorithms, including Stochastic Gradient Boosting (gbm),  Neural Network (nnet) and Random Forest (rf). Consistent with my earlier experience, I found Random Forest to be the best, and have therefore reported rf results.
+
+When I tried out some approaches on the training and testing data, I found that pretty much any approach takes time on my 2010 MacBook Pro, even with 8GB of memory. I found the article [Improving Performance of Random Forest in caret::train()](https://github.com/lgreski/datasciencectacontent/blob/master/markdown/pml-randomForestPerformance.md) by Len Greski very useful, primarily in the making the processing parallel.
+
+As per directions, I am not including the R code I wrote to run the training and prediction.
+
+## Data Pruning
+On examining the raw data, of the 19,622 rows and 160 columns, it is clear that there are many columns with NA values and with blank cells. I used the options to read.csv to mark NAs and blanks as NA values in the dataframes read-in for training and testing. I then noticed the initial columns includes names of the subjects and timestamps, which should not be predictor variables. I therefore deleted the first six columns, namely, <i>id, user_name, raw_timestamp_part_1, raw_timestamp_part_2, cvtd_timestamp and new_window</i>.
+
+In columns with a number of NA values, I found that there tended to be very few non-NA values. I therefore decided to keep only columns with non-NA values, and delete all other columns. That left me with 53 columns of predictor columns, and the <i>classe</i> result (predicted) column. In further experiemnts, I got very high accuracy, but found a significant correlation between the <i>num_window</i> column and the 
+<i>classe</i> column. In the next iteration, I deleted this <i>num_window</i> column as well, and re-ran random forest on 19,622 rows and 52 columns of predictor values.
+
+I used the <i>cor</i> function to identify correlated columns, and could have ignored a few more columns, but chose not to do that.
+
+## Running the model
+
+As recommended in the Greski article, I set up my (4-core) laptop as a 3-core cluster (leaving 1 core for the OS). Because 10-fold cross-validation (CV) was taking far-too long to finish running, I set up traincontrol to do 5-fold cross validation, and set it up to use the cluster defined. I then loaded the training data into a dataframe, and trained the **classe** feature/variable against all other features/variables. When the training ended, I examined the model created, got relevant statistics and stopped the cluster. The results from the final run are presented in the rest of this report.
 
 <pre>
-Random Forest 
+Model details
+ Random Forest 
  
-19622 samples
- 159 predictor
+ 19622 samples
+ 52 predictor
  5 classes: 'A', 'B', 'C', 'D', 'E' 
- 
- No pre-processing
- Resampling: Cross-Validated (10 fold) 
- Summary of sample sizes: 365, 365, 366, 367, 365, 366, ... 
+
+ Resampling: Cross-Validated (5 fold) 
+ Summary of sample sizes: 15697, 15698, 15697, 15698, 15698 
  Resampling results across tuning parameters:
          
-         mtry  Accuracy   Kappa      Accuracy SD  Kappa SD  
- 2  0.2684459  0.0000000  0.005065499  0.00000000
- 117  0.9067042  0.8819656  0.048654401  0.06169690
- 6952  0.9926829  0.9907819  0.011781607  0.01484254
+         mtry  Accuracy   Kappa    
+ 2    0.9943940  0.9929083
+ 27    0.9944450  0.9929732
+ 52    0.9889919  0.9860739
+ 
+ Accuracy was used to select the optimal model using  the largest value.
+ The final value used for the model was mtry = 27.
+ </pre>
+
+
+The finalModel details are as follows:
+<pre>
+
+ Type of random forest: classification
+ Number of trees: 500
+ No. of variables tried at each split: 27
+ 
+ OOB estimate of  error rate: 0.4%
+ 
+ Confusion matrix:
+      A    B    C    D    E class.error
+ A 5574    4    1    0    1 0.001075269
+ B   17 3776    4    0    0 0.005530682
+ C    0   10 3402   10    0 0.005844535
+ D    0    1   21 3192    2 0.007462687
+ E    0    1    3    3 3600 0.001940671
+
 </pre>
 
-Clearly an Accuracy of 0.993 is very good. In fact it is so good, that we need to worry about possibly over-fitting. The next command gave an idea of how each of the 10-fold cross validation steps performed.  The average of these is the 0.993 accuracy we got earlier.
+ Here is the confusion matrix on the training data, with 5-fold CV:
 
-```
-fit$resample
- Accuracy     Kappa Resample
- 1  1.0000000 1.0000000   Fold01
- 2  1.0000000 1.0000000   Fold02
- 3  0.9756098 0.9692423   Fold05
- 4  1.0000000 1.0000000   Fold04
- 5  1.0000000 1.0000000   Fold03
- 6  1.0000000 1.0000000   Fold06
- 7  1.0000000 1.0000000   Fold09
- 8  1.0000000 1.0000000   Fold08
- 9  0.9756098 0.9692884   Fold07
- 10 0.9756098 0.9692884   Fold10
-```
-
-The next command showed that the prediction did very well except for a small confusion between classes D and E.
-```
-confusionMatrix.train(fit)
-Cross-Validated (10 fold) Confusion Matrix 
-
-(entries are percentages of table totals)
+ <pre>
+ Cross-Validated (5 fold) Confusion Matrix 
  
-          Reference
-Prediction    A    B    C    D    E
-         A 26.8  0.0  0.0  0.0  0.0
-         B  0.0 19.2  0.2  0.0  0.0
-         C  0.0  0.2 17.0  0.0  0.0
-         D  0.0  0.0  0.0 17.0  0.2
-         E  0.0  0.0  0.0  0.0 19.2
-```
+ (entries are percentual average cell counts across resamples)
+ 
+ Reference
+     Prediction    A    B    C    D    E
+ A                28.4  0.1  0.0  0.0  0.0
+ B                 0.0 19.2  0.1  0.0  0.0
+ C                 0.0  0.0 17.3  0.2  0.0
+ D                 0.0  0.0  0.0 16.2  0.0
+ E                 0.0  0.0  0.0  0.0 18.3
+ 
+ Accuracy (average) : 0.9944
+ </pre>
+ As can be seen, the out of sample accuracy of 0.9944 is extremely high, with a minor amount of confusion between actual C and predicted D classes. In fact, with the <i>num_window</i> column, the accuracy was even higher, namely: 0.9979.
+ 
+The model was used to predict the <i>classe</i> for the test data, and per quiz results, was 100% accurate. A look at <i>type = "prob"</i> results in the prediction shows 1.0 or close to 1.0 probabilities for the correct class.
 
-However, there were all sorts of errors when I tried to predict using this model, with data errors etc. However, since the accuracy was really high, I decided to stick with this RF approach, but to clean up the data and try again.
-
-## Cleaning up the data
-
-On examining the data, it is clear that there are many columns with NA values. I wrote a quick R function to identify columns with over 60% NAs in the training data, and remove these columns from  both the training and testing data. I also decided that user_name and any timestamp data should not be factor in deciding the results. I removed these columns as well. From a total of 160 columns, this took me to 89 columns each, with 19,622 rows for training and 20 for testing. 
-
-The training and testing data differ in some respects. The training data has the **classe** column, while the testing data has the **problem\_id** column.  I sorted the column names in both the training and testing datasets, and put **classe** and **problem_id** at the end of these respectively. This sorting is more for ease of manual inspection, if required.
-
-I reran RandomForest on this reduced dataset.
-
-## Results on running RandomForest on reduced data
-
-
-
+## Summary
+This was an interesting open-ended non-trivial machine learning problem. As expected, some thinking about and playing with the data led to cleaning up the data and ignoring more than 100 data-sparse columns. Random forest turned out to be a good classifier technique, even if it took a while to run. The results from the model turned gave 100% accuracy on the test data, which was also satisfying. On the whole, this project was a very useful learning experience.
 
